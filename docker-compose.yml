@@ -1,0 +1,52 @@
+version: '3'
+services:
+
+  catalog:
+    build: catalog
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db-catalog
+
+  db-catalog:
+    image: mysql:5.7
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: somepwd
+      MYSQL_DATABASE: CATALOG_DB
+      MYSQL_USER: catalog-user
+      MYSQL_PASSWORD: catalogpwd
+
+  inventory:
+    build: inventory
+    ports:
+      - "8001:8001"
+    depends_on:
+      - db-inventory
+    links:
+      - jaeger
+    environment:
+      - JAEGER_AGENT_HOST=jaeger
+
+  db-inventory:
+    image: mysql:5.7
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: somepwd
+      MYSQL_DATABASE: INVENTORY_DB
+      MYSQL_USER: inventory-user
+      MYSQL_PASSWORD: inventorypwd
+
+  jaeger:
+    image: "jaegertracing/all-in-one:latest"
+    expose:
+      - "16686"
+      - "6831/udp"
+    ports:
+      - "5775:5775/udp"
+      - "6831:6831/udp"
+      - "6832:6832/udp"
+      - "5778:5778"
+      - "16686:16686"
+      - "14268:14268"
+      - "9411:9411"
