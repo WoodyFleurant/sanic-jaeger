@@ -6,7 +6,6 @@ from jaeger_util import init_tracer
 from opentracing.ext import tags
 
 
-
 app = Sanic(__name__)
 
 db = pymysql.connect("db-inventory", "inventory-user", "inventorypwd", "INVENTORY_DB")
@@ -67,7 +66,7 @@ async def reserve(request):
 
 @app.route("/fill", methods={"POST"})
 async def put_in_stock(request):
-    with opentracing.global_tracer().start_span('/fill') as span:
+    with opentracing.tracer.start_span('/fill') as span:
         product_id = int(request.json['product_id'])
         stock = int(request.json['stock'])
         cursor = db.cursor()
