@@ -1,2 +1,5 @@
 sanic==20.3.0
-pymysql
+pymysql==0.9.3
+jaeger-client==4.3.0
+requests==2.24.0
+pytest

@@ -2,9 +2,9 @@ from sanic import Sanic
 from sanic import response
 import pymysql
 import opentracing
-from jaeger_util import init_tracer
 from opentracing.ext import tags
-
+from jaeger_client import Config
+from opentracing.scope_managers.contextvars import ContextVarsScopeManager
 
 app = Sanic(__name__)
 
@@ -18,7 +18,19 @@ cursor.execute(sql)
 @app.listener('after_server_start')
 async def notify_server_started(app, loop):
     print("--- after server start ---")
-    init_tracer("inventory")
+    config = Config(
+        config={
+            'sampler': {
+                'type': 'const',
+                'param': 1,
+            },
+            'logging': True,
+        },
+        service_name="inventory",
+        validate=True,
+        scope_manager=ContextVarsScopeManager()
+    )
+    config.initialize_tracer()
 
 
 @app.route("/stocks", methods={"GET"})
@@ -39,30 +51,6 @@ async def get_stocks(request):
     except Exception as e:
         print(e)
         return response.json(status=500, body="KO")
-
-
-@app.route("/reserve", methods={"POST"})
-async def reserve(request):
-    product_id = request.json['product_id']
-    db.begin()
-    cursor = db.cursor()
-    sql = "SELECT * FROM STOCK WHERE ITEM_ID = ('%d')" % (int(product_id))
-    sql_update = "UPDATE STOCK SET STOCK = STOCK - 1 WHERE ITEM_ID = ('%d')" % (int(product_id))
-    try:
-        cursor.execute(sql)
-        result = cursor.fetchone()
-        if len(result) == 0 or result is None:
-            return response.json(status=404, body="Not Found")
-        stock = int(result[1])
-        if stock == 0:
-            return response.json(status=410, body="Not available")
-        cursor.execute(sql_update)
-        db.commit()
-        return response.json(status=200, body="OK")
-    except Exception as e:
-        print(e)
-        return response.json(status=500, body="KO")
-
 
 @app.route("/fill", methods={"POST"})
 async def put_in_stock(request):

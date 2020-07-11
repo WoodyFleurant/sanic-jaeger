@@ -13,9 +13,9 @@ curl -XPOST \
     --data '{"name": "product_1","price":"9.9"}' \
     http://localhost:8000/item
     
-ab -n 10000 -c 100 -T application/json -p post.json http://localhost:8000/item
+#ab -n 10000 -c 100 -T application/json -p post.json http://localhost:8000/item
 
-ab -n 10000 -c 100 -p catalog/post.json -T application/json http://localhost:8000/item
+#ab -n 10000 -c 100 -p catalog/post.json -T application/json http://localhost:8000/item
 
 curl -XPOST \
     --header 'content-type: application/json' \
@@ -24,7 +24,9 @@ curl -XPOST \
     
 curl -XPOST --header 'content-type: application/json' --data '{"product_id": "2","stock":"10"}' http://localhost:8001/fill
 
+curl http:/localhost:8000/list
+
 curl http:/localhost:8001/stocks
 
 
-curl -XPOST --header 'content-type: application/json' --data '{"product_id": "2"}' http://localhost:8001/reserve
+#curl -XPOST --header 'content-type: application/json' --data '{"product_id": "2"}' http://localhost:8001/reserve
