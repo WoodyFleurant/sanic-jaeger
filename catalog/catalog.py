@@ -27,7 +27,7 @@ async def notify_server_started(app, loop):
             },
             'logging': True,
         },
-        service_name="inventory",
+        service_name="catalog",
         validate=True,
         scope_manager=ContextVarsScopeManager()
     )
@@ -80,7 +80,7 @@ async def _fetch_all_inventory():
     with tracer.start_span("_fetch_all_inventory", child_of=tracer.active_span) as span:
         span.set_tag(tags.HTTP_METHOD, "GET")
         tracer.inject(span, Format.HTTP_HEADERS, carrier=headers)
-        response = requests.get("http://inventory:8001/stocks")
+        response = requests.get("http://inventory:8001/stocks", headers=headers)
         return response.json()
 
 

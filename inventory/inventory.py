@@ -5,6 +5,7 @@ import opentracing
 from opentracing.ext import tags
 from jaeger_client import Config
 from opentracing.scope_managers.contextvars import ContextVarsScopeManager
+from opentracing.propagation import Format
 
 app = Sanic(__name__)
 
@@ -35,22 +36,25 @@ async def notify_server_started(app, loop):
 
 @app.route("/stocks", methods={"GET"})
 async def get_stocks(request):
-    items = []
-    cursor = db.cursor()
-    sql = "SELECT * FROM STOCK"
-    try:
-        cursor.execute(sql)
-        results = cursor.fetchall()
-        for row in results:
-            item = {
-                "item_id": row[0],
-                "stock": row[1],
-            }
-            items.append(item)
-        return response.json(status=200, body=items)
-    except Exception as e:
-        print(e)
-        return response.json(status=500, body="KO")
+    tracer = opentracing.global_tracer()
+    span_ctx = tracer.extract(format=Format.HTTP_HEADERS, carrier=request.headers)
+    with tracer.start_span("get_stocks", child_of=span_ctx) as span:
+        items = []
+        cursor = db.cursor()
+        sql = "SELECT * FROM STOCK"
+        try:
+            cursor.execute(sql)
+            results = cursor.fetchall()
+            for row in results:
+                item = {
+                    "item_id": row[0],
+                    "stock": row[1],
+                }
+                items.append(item)
+            return response.json(status=200, body=items)
+        except Exception as e:
+            print(e)
+            return response.json(status=500, body="KO")
 
 @app.route("/fill", methods={"POST"})
 async def put_in_stock(request):
