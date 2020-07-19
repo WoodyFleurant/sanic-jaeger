@@ -6,19 +6,17 @@ from opentracing.ext import tags
 from jaeger_client import Config
 from opentracing.scope_managers.contextvars import ContextVarsScopeManager
 from opentracing.propagation import Format
+from db import init_db, _get_all_stocks, _put_in_stocks
 
 app = Sanic(__name__)
 
 db = pymysql.connect("db-inventory", "inventory-user", "inventorypwd", "INVENTORY_DB")
 
-cursor = db.cursor()
-sql = """CREATE TABLE IF NOT EXISTS STOCK (ITEM_ID int, STOCK int, PRIMARY KEY (ITEM_ID))"""
-cursor.execute(sql)
+init_db(db)
 
 
 @app.listener('after_server_start')
 async def notify_server_started(app, loop):
-    print("--- after server start ---")
     config = Config(
         config={
             'sampler': {
@@ -39,33 +37,22 @@ async def get_stocks(request):
     tracer = opentracing.global_tracer()
     span_ctx = tracer.extract(format=Format.HTTP_HEADERS, carrier=request.headers)
     with tracer.start_span("get_stocks", child_of=span_ctx) as span:
-        items = []
-        cursor = db.cursor()
-        sql = "SELECT * FROM STOCK"
         try:
-            cursor.execute(sql)
-            results = cursor.fetchall()
-            for row in results:
-                item = {
-                    "item_id": row[0],
-                    "stock": row[1],
-                }
-                items.append(item)
+            items = await _get_all_stocks(db)
             return response.json(status=200, body=items)
         except Exception as e:
-            print(e)
+            span.set_tag('response', e)
+            span.set_tag(tags.ERROR, True)
             return response.json(status=500, body="KO")
+
 
 @app.route("/fill", methods={"POST"})
 async def put_in_stock(request):
     with opentracing.tracer.start_span('/fill') as span:
         product_id = int(request.json['product_id'])
         stock = int(request.json['stock'])
-        cursor = db.cursor()
-        sql = "INSERT INTO STOCK(ITEM_ID, STOCK) VALUES ('%d', %d )" % (product_id, stock)
         try:
-            cursor.execute(sql)
-            db.commit()
+            await _put_in_stocks(db, product_id, stock)
             span.set_tag('response', "OK")
             return response.json(status=200, body="OK")
         except Exception as e:
